@@ -3,8 +3,9 @@ streamlit>=1.45.0
 pandas>=2.2.0
 numpy>=2.0.0
 
-# PDF handling (what's missing)
+# PDF handling
 PyPDF2>=3.0.0
+reportlab>=4.0.0
 pdfplumber>=0.11.0
 
 # Web scraping
@@ -12,12 +13,12 @@ requests>=2.32.0
 beautifulsoup4>=4.12.0
 lxml>=5.3.0
 
-# NLP (lightweight alternatives to heavy transformers)
+# NLP
 nltk>=3.9.0
 scikit-learn>=1.6.0
 spacy>=3.8.0
 
-# Data viz
+# Data visualization
 plotly>=5.25.0
 matplotlib>=3.10.0
 
