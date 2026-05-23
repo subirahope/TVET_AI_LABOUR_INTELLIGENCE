@@ -7,11 +7,11 @@ Author: Hope Subira
 import streamlit as st
 
 # ============================================================
-# PAGE CONFIGURATION — must be the VERY FIRST st.* call
+# PAGE CONFIGURATION 
 # ============================================================
 st.set_page_config(
     page_title="TVET Skills Intel",
-    page_icon=":brain:",  
+    page_icon="assets/logo.png",  
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -26,6 +26,7 @@ from pathlib import Path
 import sys
 import io
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import base64
 from collections import Counter
 import tempfile
@@ -82,15 +83,6 @@ def logo_exists():
     logo_path = Path(__file__).parent / "assets" / "logo.png"
     return logo_path.exists()
 
-# ============================================================
-# INJECT FAVICON
-# ============================================================
-st.set_page_config(
-    page_title="TVET Skills Intel",
-    page_icon="assets/logo.png",  # Direct path - Streamlit handles it
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # ============================================================
 # REDESIGNED STYLES
@@ -1030,7 +1022,7 @@ def generate_pdf_report():
         canv.setFillColor(C['silver'])
         canv.setFont("Helvetica", 7.5)
         canv.drawString(txt_x, PAGE_H - HDR_H + 0.28 * cm,
-                        "AI-Powered Labour Market Intelligence  ·  Open University of Kenya")
+                        "AI-Powered Labour Market Intelligence  ·  HSW")
 
         # Gold pill page number
         pg_text = f"PAGE  {doc.page}"
@@ -1051,8 +1043,8 @@ def generate_pdf_report():
         canv.rect(0, 0, PAGE_W, FTR_H, fill=1, stroke=0)
         canv.setFillColor(C['steel'])
         canv.setFont("Helvetica", 6.5)
-        canv.drawString(L_MARGIN, 0.32 * cm,
-                        f"Generated {datetime.now().strftime('%d %B %Y at %H:%M')} EAT")
+        eat_time = datetime.now(ZoneInfo('Africa/Nairobi')).strftime('%d %B %Y at %H:%M')  # ← new
+        canv.drawString(L_MARGIN, 0.32 * cm, f"Generated {eat_time} EAT")                 # ← changed
         canv.drawRightString(PAGE_W - R_MARGIN, 0.32 * cm,
                              "Confidential  ·  Academic Research Use Only")
         
@@ -1103,7 +1095,7 @@ def generate_pdf_report():
 
         # Report-type pill tag — just above the gold rule
         canv.setFillColor(C['gold'])
-        canv.roundRect(1.6 * cm, rule_y + 0.5 * cm, 5.5 * cm, 0.55 * cm, 0.12 * cm,
+        canv.roundRect(1.6 * cm, rule_y + 0.5 * cm, 5.2 * cm, 0.55 * cm, 0.12 * cm,
                        fill=1, stroke=0)
         canv.setFillColor(C['navy'])
         canv.setFont("Helvetica-Bold", 8)
@@ -1120,7 +1112,7 @@ def generate_pdf_report():
         canv.setFillColor(C['white'])
         canv.setFont("Helvetica-Bold", 11)
         canv.drawString(2.0 * cm, meta_y + 0.55 * cm,
-                        "Open University of Kenya")
+                        "The Nairobi National Polytechnic")
         canv.setFillColor(C['silver'])
         canv.setFont("Helvetica", 8)
         canv.drawString(2.0 * cm, meta_y + 0.2 * cm,
@@ -1143,7 +1135,7 @@ def generate_pdf_report():
     # Page title
     story.append(Paragraph("Labour Market Intelligence Report", styles['RptTitle']))
     story.append(Paragraph(
-        f"TVET Skills Intel  ·  {datetime.now().strftime('%B %Y')}  ·  Open University of Kenya",
+        f"TVET Skills Intel  ·  {datetime.now().strftime('%B %Y')}  ·  The Nairobi National Polytechnic",
         styles['RptSubtitle'],
     ))
     story.append(HRFlowable(width="100%", thickness=1, color=C['gold'],
