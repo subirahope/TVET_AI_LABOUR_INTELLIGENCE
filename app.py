@@ -593,17 +593,17 @@ with st.sidebar:
         ''', unsafe_allow_html=True)
     
     st.markdown("---")
-    page = st.radio("Navigation", ["📊 Dashboard", "🔧 Skills Analysis", "🎓 Courses", "📄 Reports", "🗄️ Data Sources"], index=0)
+    page = st.radio("Navigation", ["Dashboard", "Skills Analysis", "Courses", "Reports", "Data Sources"], index=0)
     st.markdown("---")
-    st.markdown("### 📊 System Status")
+    st.markdown("### System Status")
     if st.session_state.processed_jobs is not None:
-        st.success(f"✅ Jobs loaded: {len(st.session_state.processed_jobs)}")
+        st.success(f"Jobs loaded: {len(st.session_state.processed_jobs)}")
     else:
-        st.info("⏳ No job data loaded")
+        st.info("No job data loaded")
     if st.session_state.curriculum_skills:
-        st.success(f"✅ Curriculum: {len(st.session_state.curriculum_skills)} skills")
+        st.success(f"Curriculum: {len(st.session_state.curriculum_skills)} skills")
     else:
-        st.info("⏳ No curriculum loaded")
+        st.info("No curriculum loaded")
 
 # ============================================================
 # DATA UPLOAD
@@ -618,21 +618,21 @@ def render_data_upload():
         if job_file:
             df = st.session_state.data_loader.load_job_postings(job_file)
             if df is not None:
-                st.success(f"✅ Loaded {len(df)} job postings")
-                if st.button("🔧 Extract Skills from Jobs"):
+                st.success(f"Loaded {len(df)} job postings")
+                if st.button("Extract Skills from Jobs"):
                     with st.spinner("Extracting skills…"):
                         st.session_state.processed_jobs = st.session_state.nlp_pipeline.process_dataframe(df, text_column='description')
                         skill_freq = st.session_state.nlp_pipeline.get_skill_frequencies(st.session_state.processed_jobs)
                         st.session_state.gap_analyzer.set_market_frequencies(skill_freq)
-                        st.success("✅ Skills extracted!")
+                        st.success("Skills extracted!")
                         st.rerun()
         else:
-            if st.button("📊 Use Sample Job Data"):
+            if st.button("Use Sample Job Data"):
                 df = st.session_state.data_loader.generate_sample_job_data()
                 st.session_state.processed_jobs = st.session_state.nlp_pipeline.process_dataframe(df, text_column='description')
                 skill_freq = st.session_state.nlp_pipeline.get_skill_frequencies(st.session_state.processed_jobs)
                 st.session_state.gap_analyzer.set_market_frequencies(skill_freq)
-                st.success("✅ Sample data loaded!")
+                st.success("Sample data loaded!")
                 st.rerun()
 
     with col2:
@@ -645,11 +645,11 @@ def render_data_upload():
                 if text:
                     result = st.session_state.nlp_pipeline.process_job_description(text)
                     all_skills.extend(result['normalized_skills'])
-                    st.success(f"✅ {file.name} — {len(result['normalized_skills'])} skills")
+                    st.success(f"{file.name} — {len(result['normalized_skills'])} skills")
             curriculum_freq = dict(Counter(all_skills))
             st.session_state.curriculum_skills = all_skills
             st.session_state.gap_analyzer.set_curriculum_frequencies(curriculum_freq)
-            st.success(f"✅ Total: {len(set(all_skills))} unique curriculum skills")
+            st.success(f"Total: {len(set(all_skills))} unique curriculum skills")
 
 # ============================================================
 # TREND ANALYSIS FUNCTION
@@ -685,9 +685,14 @@ def get_trend_analysis():
         if len(monthly_counts) > 1:
             first_count = monthly_counts.iloc[0]['count']
             last_count = monthly_counts.iloc[-1]['count']
-            growth = ((last_count - first_count) / first_count * 100) if first_count > 0 else 0
+            # Only calculate percentage growth if baseline is meaningful (>=5)
+            if first_count >= 5:
+                growth = ((last_count - first_count) / first_count * 100)
+            else:
+                # Use absolute change instead of misleading percentage
+                growth = None  # Will display as "N/A" or show absolute change
         else:
-            growth = 0
+            growth = None
         
         avg_count = monthly_counts['count'].mean()
         high_seasons = monthly_counts[monthly_counts['count'] > avg_count]['year_month_str'].tolist()
@@ -721,7 +726,7 @@ def run_full_analysis():
                     st.session_state.prioritized_gaps, max_courses=8
                 )
             st.session_state.analysis_complete = True
-            st.success("✅ Analysis complete!")
+            st.success("Analysis complete!")
             return True
     return False
 
@@ -1247,9 +1252,6 @@ def generate_pdf_report():
     # ============================================================
     # METHODOLOGICAL NOTE
     # ============================================================
-        # ============================================================
-    # METHODOLOGICAL NOTE
-    # ============================================================
     story.append(Paragraph("Methodological Note", styles['CustomSectionHeading']))
     
     method_text = (
@@ -1294,7 +1296,7 @@ def render_dashboard():
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("🚀 Run Complete Analysis", use_container_width=True):
+        if st.button("Run Complete Analysis", use_container_width=True):
             run_full_analysis()
     st.markdown("---")
     
@@ -1320,13 +1322,28 @@ def render_dashboard():
     st.markdown("---")
     
     # Trend Analysis
-    st.markdown("### 📈 Job Posting Trends")
+        # Trend Analysis
+    st.markdown("### Job Posting Trends")
     monthly_counts, peak_month, trend_stats = get_trend_analysis()
     if monthly_counts is not None and len(monthly_counts) > 0:
         cols2 = st.columns(4)
         cols2[0].metric("Total Jobs", trend_stats['total'])
         cols2[1].metric("Peak Month", f"{peak_month['year_month_str']}", f"{peak_month['count']} jobs")
-        cols2[2].metric("Growth Rate", f"{trend_stats['growth']:.1f}%")
+        
+        # Handle growth display properly
+        if trend_stats.get('growth') is not None and trend_stats['growth'] < 1000:
+            growth_display = f"{trend_stats['growth']:.1f}%"
+        else:
+            # Calculate absolute change instead
+            if len(monthly_counts) > 1:
+                first_count = monthly_counts.iloc[0]['count']
+                last_count = monthly_counts.iloc[-1]['count']
+                abs_change = last_count - first_count
+                growth_display = f"+{abs_change} jobs" if abs_change >= 0 else f"{abs_change} jobs"
+            else:
+                growth_display = "Insufficient data"
+        
+        cols2[2].metric("Growth Rate", growth_display)
         cols2[3].metric("Monthly Avg", f"{trend_stats['avg']:.0f}")
         
         fig = px.line(monthly_counts, x='year_month_str', y='count', 
@@ -1392,7 +1409,7 @@ def render_skills_analysis():
     for skills in st.session_state.processed_jobs['normalized_skills']:
         all_skills_flat.extend(skills)
     skill_counts = Counter(all_skills_flat)
-    st.markdown("#### 📋 Compare Skills")
+    st.markdown("#### Compare Skills")
     selected = st.multiselect("Select skills to compare", list(skill_counts.keys()), default=list(skill_counts.keys())[:3])
     if selected:
         sel_df = pd.DataFrame([(s, skill_counts[s]) for s in selected], columns=['Skill','Frequency'])
@@ -1402,7 +1419,7 @@ def render_skills_analysis():
         fig.update_layout(showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
     st.markdown("---")
-    st.markdown("#### 📊 Top 20 Skills")
+    st.markdown("#### Top 20 Skills")
     top_df = pd.DataFrame(skill_counts.most_common(20), columns=['Skill','Frequency'])
     fig = px.bar(top_df, x='Frequency', y='Skill', orientation='h', color='Frequency', color_continuous_scale='Blues')
     fig = apply_chart_theme(fig)
@@ -1426,7 +1443,7 @@ def render_courses():
     st.markdown(f"**{len(courses)} courses found**")
     st.markdown("---")
     for course in courses:
-        with st.expander(f"📘 {course.get('title','N/A')}"):
+        with st.expander(f" {course.get('title','N/A')}"):
             col1, col2 = st.columns([2,1])
             with col1:
                 st.markdown(f"**Skill Gap:** `{course.get('skill_gap','N/A')}`")
@@ -1454,7 +1471,7 @@ def render_reports():
         st.info("Run analysis first to generate reports.")
         return
     
-    st.markdown("### 📈 Trend Analysis Preview")
+    st.markdown("### Trend Analysis Preview")
     monthly_counts, peak_month, trend_stats = get_trend_analysis()
     if monthly_counts is not None and len(monthly_counts) > 0:
         cols2 = st.columns(4)
@@ -1476,12 +1493,12 @@ def render_reports():
         report_type = st.selectbox("Report Type", ["Full Analysis Report", "Skills Gap Summary", "Course Recommendations Only"])
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("📥 Generate PDF Report", use_container_width=True):
+        if st.button(" Generate PDF Report", use_container_width=True):
             pdf_file = generate_pdf_report()
             if pdf_file:
                 with open(pdf_file, "rb") as f:
                     st.download_button(
-                        label="📄 Download PDF Report",
+                        label=" Download PDF Report",
                         data=f,
                         file_name=f"tvet_report_{datetime.now().strftime('%Y%m%d')}.pdf",
                         mime="application/pdf",
@@ -1505,7 +1522,7 @@ def render_data_sources():
     st.markdown("---")
     render_data_upload()
     st.markdown("---")
-    st.markdown("### 📊 System Information")
+    st.markdown("###  System Information")
     st.json({
         "jobs_loaded": len(st.session_state.processed_jobs) if st.session_state.processed_jobs is not None else 0,
         "curriculum_skills": len(set(st.session_state.curriculum_skills)) if st.session_state.curriculum_skills else 0,
@@ -1517,15 +1534,15 @@ def render_data_sources():
 # ============================================================
 # ROUTING
 # ============================================================
-if page == "📊 Dashboard":
+if page == " Dashboard":
     render_dashboard()
-elif page == "🔧 Skills Analysis":
+elif page == " Skills Analysis":
     render_skills_analysis()
-elif page == "🎓 Courses":
+elif page == " Courses":
     render_courses()
-elif page == "📄 Reports":
+elif page == " Reports":
     render_reports()
-elif page == "🗄️ Data Sources":
+elif page == " Data Sources":
     render_data_sources()
 
 # ============================================================
