@@ -728,8 +728,7 @@ def run_full_analysis():
             return True
     return False
 # ============================================================
-# PDF REPORT GENERATION  —  drop-in replacement
-# Requires: reportlab, pypdf
+# PDF REPORT GENERATION 
 # ============================================================
 
 def generate_pdf_report():
@@ -1030,7 +1029,7 @@ def generate_pdf_report():
         canv.setFillColor(C['silver'])
         canv.setFont("Helvetica", 7.5)
         canv.drawString(txt_x, PAGE_H - HDR_H + 0.28 * cm,
-                        "AI-Powered Labour Market Intelligence  ·  Open University of Kenya")
+                        "AI-Powered Labour Market Intelligence  ·  HSW")
 
         # Gold pill page number
         pg_text = f"PAGE  {doc.page}"
@@ -1043,19 +1042,19 @@ def generate_pdf_report():
         canv.setFont("Helvetica-Bold", 7.5)
         canv.drawCentredString(pill_x + pill_w / 2, pill_y + 0.14 * cm, pg_text)
 
-        # Footer
+            # Footer
         FTR_H = 0.9 * cm
-        canv.setFillColor(C['gold'])
-        canv.rect(0, FTR_H, PAGE_W, 0.04 * cm, fill=1, stroke=0)
-        canv.setFillColor(C['bg_stripe'])
-        canv.rect(0, 0, PAGE_W, FTR_H, fill=1, stroke=0)
-        canv.setFillColor(C['steel'])
-        canv.setFont("Helvetica", 6.5)
-        canv.drawString(L_MARGIN, 0.32 * cm,
-                        f"Generated {datetime.now().strftime('%d %B %Y at %H:%M')}")
-        canv.drawRightString(PAGE_W - R_MARGIN, 0.32 * cm,
+        canvas.setFillColor(C['gold'])
+        canvas.rect(0, FTR_H, PAGE_W, 0.04 * cm, fill=1, stroke=0)
+        canvas.setFillColor(C['bg_stripe'])
+        canvas.rect(0, 0, PAGE_W, FTR_H, fill=1, stroke=0)
+        canvas.setFillColor(C['steel'])
+        canvas.setFont("Helvetica", 6.5)
+        canvas.drawString(L_MARGIN, 0.32 * cm,
+                        f"Generated {current_datetime.strftime('%d %B %Y at %H:%M')} EAT")
+        canvas.drawRightString(PAGE_W - R_MARGIN, 0.32 * cm,
                              "Confidential  ·  Academic Research Use Only")
-        canv.restoreState()
+        canvas.restoreState()
 
     # ═════════════════════════════════════════════════════════════════════
     # COVER PAGE  (raw canvas, merged later)
@@ -1102,7 +1101,7 @@ def generate_pdf_report():
 
         # Report-type pill tag — just above the gold rule
         canv.setFillColor(C['gold'])
-        canv.roundRect(1.6 * cm, rule_y + 0.5 * cm, 4.8 * cm, 0.55 * cm, 0.12 * cm,
+        canv.roundRect(1.6 * cm, rule_y + 0.5 * cm, 5.0 * cm, 0.55 * cm, 0.12 * cm,
                        fill=1, stroke=0)
         canv.setFillColor(C['navy'])
         canv.setFont("Helvetica-Bold", 8)
@@ -1119,7 +1118,7 @@ def generate_pdf_report():
         canv.setFillColor(C['white'])
         canv.setFont("Helvetica-Bold", 11)
         canv.drawString(2.0 * cm, meta_y + 0.55 * cm,
-                        "Open University of Kenya — TVET Division")
+                        "The Nairobi National Polytechnic")
         canv.setFillColor(C['silver'])
         canv.setFont("Helvetica", 8)
         canv.drawString(2.0 * cm, meta_y + 0.2 * cm,
