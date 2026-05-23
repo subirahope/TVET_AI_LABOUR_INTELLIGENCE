@@ -916,13 +916,27 @@ def render_reports():
         st.info("Run analysis first to generate reports.")
         return
     
-    st.markdown("### Trend Analysis Preview")
+        st.markdown("### Trend Analysis Preview")
     monthly_counts, peak_month, trend_stats = get_trend_analysis()
     if monthly_counts is not None and len(monthly_counts) > 0:
         cols2 = st.columns(4)
         cols2[0].metric("Total Jobs", trend_stats['total'])
         cols2[1].metric("Peak Month", f"{peak_month['year_month_str']}", f"{peak_month['count']} jobs")
-        cols2[2].metric("Growth Rate", f"{trend_stats['growth']:.1f}%")
+        
+        # Handle growth display properly (avoid None value)
+        if trend_stats.get('growth') is not None and trend_stats['growth'] < 1000:
+            growth_display = f"{trend_stats['growth']:.1f}%"
+        else:
+            # Calculate absolute change instead
+            if len(monthly_counts) > 1:
+                first_count = monthly_counts.iloc[0]['count']
+                last_count = monthly_counts.iloc[-1]['count']
+                abs_change = last_count - first_count
+                growth_display = f"+{abs_change} jobs" if abs_change >= 0 else f"{abs_change} jobs"
+            else:
+                growth_display = "Insufficient data"
+        
+        cols2[2].metric("Growth Rate", growth_display)
         cols2[3].metric("Monthly Avg", f"{trend_stats['avg']:.0f}")
         fig = px.line(monthly_counts, x='year_month_str', y='count', 
                       title='Job Postings Over Time', markers=True)
