@@ -727,399 +727,595 @@ def run_full_analysis():
             st.success("Analysis complete!")
             return True
     return False
+# ============================================================
+# PDF REPORT GENERATION 
+# ============================================================
 
-# ============================================================
-# PDF REPORT GENERATION
-# ============================================================
-# ============================================================
-# PDF REPORT GENERATION
-# ============================================================
 def generate_pdf_report():
     """
-    Generate a professional PDF report with clean, modern layout
+    Generate a professional corporate/executive PDF report.
+    Returns the path to a temporary PDF file, or None on failure.
     """
     if not REPORTLAB_AVAILABLE:
         st.error("ReportLab not installed. PDF generation unavailable.")
         return None
-    
+
+    import os
+    import base64
+    import tempfile
+    from collections import Counter
+    from datetime import datetime
+
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.platypus import (
         SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-        KeepTogether, PageBreak
+        HRFlowable, KeepInFrame,
     )
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import cm, mm
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
-    
-    # COLOUR PALETTE
-    COLOURS = {
-        'primary': colors.HexColor('#1B2A4A'),
-        'primary-light': colors.HexColor('#2E4A80'),
-        'accent': colors.HexColor('#C9A84C'),
-        'accent-light': colors.HexColor('#E8C96A'),
-        'text-mid': colors.HexColor('#3D526B'),
-        'text-light': colors.HexColor('#64748B'),
-        'border': colors.HexColor('#DDE3EF'),
-        'bg-light': colors.HexColor('#F8FAFC'),
-        'bg-subtle': colors.HexColor('#F4F6FA'),
-        'white': colors.white,
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+    from reportlab.pdfgen import canvas as cv_mod
+    from pypdf import PdfReader, PdfWriter
+
+    # ── PALETTE ───────────────────────────────────────────────────────────
+    C = {
+        'navy':       colors.HexColor('#0B1829'),
+        'navy_mid':   colors.HexColor('#162B47'),
+        'navy_light': colors.HexColor('#1E3A5F'),
+        'gold':       colors.HexColor('#C9A84C'),
+        'gold_light': colors.HexColor('#E2C070'),
+        'slate':      colors.HexColor('#3D526B'),
+        'steel':      colors.HexColor('#64748B'),
+        'silver':     colors.HexColor('#94A3B8'),
+        'rule':       colors.HexColor('#CBD5E1'),
+        'bg_card':    colors.HexColor('#FFFFFF'),
+        'bg_stripe':  colors.HexColor('#F0F4F9'),
+        'white':      colors.white,
     }
-    
-    # SETUP DOCUMENT
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-    temp_file.close()
-    
-    # Get logo
+
+    PAGE_W, PAGE_H = A4
+    L_MARGIN  = 1.6 * cm
+    R_MARGIN  = 1.6 * cm
+    T_MARGIN  = 2.2 * cm
+    B_MARGIN  = 1.6 * cm
+    CONTENT_W = PAGE_W - L_MARGIN - R_MARGIN
+
+    # ── DATA COLLECTION ───────────────────────────────────────────────────
+    total_jobs = (
+        len(st.session_state.processed_jobs)
+        if st.session_state.processed_jobs is not None else 0
+    )
+
+    all_skills = []
+    if (st.session_state.processed_jobs is not None
+            and 'normalized_skills' in st.session_state.processed_jobs.columns):
+        for skills in st.session_state.processed_jobs['normalized_skills']:
+            all_skills.extend(skills)
+    skill_counts  = Counter(all_skills)
+    unique_skills = len(skill_counts)
+    top_skills    = skill_counts.most_common(10)
+
+    total_gaps    = (len(st.session_state.gap_matrix)
+                     if st.session_state.gap_matrix is not None else 0)
+    total_courses = len(st.session_state.generated_courses)
+
+    monthly_counts, peak_month, trend_stats = get_trend_analysis()
+
+    # ── LOGO ──────────────────────────────────────────────────────────────
     temp_logo_path = None
     logo_base64 = get_logo_base64()
     if logo_base64:
-        temp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-        temp_logo.write(base64.b64decode(logo_base64))
-        temp_logo.close()
-        temp_logo_path = temp_logo.name
-    
-    # Create document
-    doc = SimpleDocTemplate(
-        temp_file.name,
-        pagesize=A4,
-        topMargin=1.8*cm,
-        bottomMargin=1.8*cm,
-        leftMargin=1.5*cm,
-        rightMargin=1.5*cm,
-        title="TVET Labour Market Intelligence Report",
-        author="TVET Skills Intel",
-        subject="Skills Gap Analysis and Course Recommendations"
-    )
-    
-    # CUSTOM STYLES
-    styles = getSampleStyleSheet()
-    
-    styles.add(ParagraphStyle(
-        name='CustomReportTitle',
-        fontName='Helvetica-Bold',
-        fontSize=22,
-        textColor=COLOURS['primary'],
-        alignment=TA_LEFT,
-        spaceAfter=6,
-        leading=28
-    ))
-    
-    styles.add(ParagraphStyle(
-        name='CustomReportSubtitle',
-        fontName='Helvetica',
-        fontSize=10,
-        textColor=COLOURS['text-light'],
-        alignment=TA_LEFT,
-        spaceAfter=20,
-        leading=14
-    ))
-    
-    styles.add(ParagraphStyle(
-        name='CustomSectionHeading',
-        fontName='Helvetica-Bold',
-        fontSize=14,
-        textColor=COLOURS['primary'],
-        spaceBefore=16,
-        spaceAfter=8,
-        leading=18
-    ))
-    
-    styles.add(ParagraphStyle(
-        name='CustomBodyText',
-        fontName='Helvetica',
-        fontSize=9,
-        textColor=COLOURS['text-mid'],
-        alignment=TA_JUSTIFY,
-        spaceAfter=8,
-        leading=13
-    ))
-    
-    styles.add(ParagraphStyle(
-        name='CustomCaption',
-        fontName='Helvetica-Oblique',
-        fontSize=8,
-        textColor=COLOURS['text-light'],
-        alignment=TA_CENTER,
-        spaceAfter=6,
-        leading=10
-    ))
-    
-    styles.add(ParagraphStyle(
-        name='CustomStatNumber',
-        fontName='Helvetica-Bold',
-        fontSize=24,
-        textColor=COLOURS['primary'],
-        alignment=TA_CENTER,
-        leading=28
-    ))
-    
-    styles.add(ParagraphStyle(
-        name='CustomStatLabel',
-        fontName='Helvetica',
-        fontSize=8,
-        textColor=COLOURS['text-light'],
-        alignment=TA_CENTER,
-        leading=10
-    ))
-    
-    # PAGE HEADER/FOOTER CALLBACK
-    def header_footer(canvas, doc):
-        canvas.saveState()
-        
-        # Header bar
-        canvas.setFillColor(COLOURS['primary'])
-        canvas.rect(0, A4[1] - 1.8*cm, A4[0], 1.8*cm, fill=1, stroke=0)
-        
-        # Fading gold accent line
-        start_x = 0
-        end_x = A4[0]
-        bar_height = 0.08*cm
-        bar_y = A4[1] - 1.8*cm
-        
-        segments = 20
-        gold_r, gold_g, gold_b = 201, 168, 76
-        for i in range(segments):
-            seg_width = (end_x - start_x) / segments
-            seg_start = start_x + (i * seg_width)
-            alpha = 1.0 - (i / segments)
-            canvas.setFillColorRGB(gold_r/255.0, gold_g/255.0, gold_b/255.0, alpha=alpha)
-            canvas.rect(seg_start, bar_y, seg_width, bar_height, fill=1, stroke=0)
-        
-        # Logo
+        tmp_logo = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        tmp_logo.write(base64.b64decode(logo_base64))
+        tmp_logo.close()
+        temp_logo_path = tmp_logo.name
+
+    # ═════════════════════════════════════════════════════════════════════
+    # HELPERS
+    # ═════════════════════════════════════════════════════════════════════
+
+    def make_styles():
+        styles = getSampleStyleSheet()
+
+        def add(name, **kw):
+            styles.add(ParagraphStyle(name=name, **kw))
+
+        add('RptTitle',
+            fontName='Helvetica-Bold', fontSize=18,
+            textColor=C['navy'], leading=24, spaceBefore=0, spaceAfter=4)
+        add('RptSubtitle',
+            fontName='Helvetica', fontSize=9,
+            textColor=C['steel'], leading=13, spaceAfter=14)
+        add('SecHeading',
+            fontName='Helvetica-Bold', fontSize=12,
+            textColor=C['navy'], leading=16, spaceBefore=18, spaceAfter=6)
+        add('Body',
+            fontName='Helvetica', fontSize=9,
+            textColor=C['slate'], leading=13.5,
+            alignment=TA_JUSTIFY, spaceAfter=6)
+        add('Caption',
+            fontName='Helvetica-Oblique', fontSize=7.5,
+            textColor=C['silver'], alignment=TA_CENTER, leading=10, spaceAfter=4)
+        add('StatNum',
+            fontName='Helvetica-Bold', fontSize=22,
+            textColor=C['navy'], alignment=TA_CENTER, leading=26)
+        add('StatLabel',
+            fontName='Helvetica', fontSize=7.5,
+            textColor=C['steel'], alignment=TA_CENTER, leading=10)
+        add('TblHead',
+            fontName='Helvetica-Bold', fontSize=8.5,
+            textColor=C['white'], alignment=TA_LEFT, leading=11)
+        add('TblCell',
+            fontName='Helvetica', fontSize=8.5,
+            textColor=C['slate'], alignment=TA_LEFT, leading=11)
+        add('TblCellCenter',
+            fontName='Helvetica', fontSize=8.5,
+            textColor=C['slate'], alignment=TA_CENTER, leading=11)
+        return styles
+
+    def section_rule():
+        return HRFlowable(width="100%", thickness=0.5, color=C['gold'],
+                          spaceBefore=0, spaceAfter=8)
+
+    def metric_cards(stats):
+        """stats = [(value, label), ...]"""
+        n = len(stats)
+        card_w = CONTENT_W / n
+        top_row   = [''] * n
+        val_row   = [Paragraph(str(v), styles['StatNum'])  for v, _ in stats]
+        label_row = [Paragraph(l.upper(), styles['StatLabel']) for _, l in stats]
+        tbl = Table(
+            [top_row, val_row, label_row],
+            colWidths=[card_w] * n,
+            rowHeights=[0.18 * cm, 1.2 * cm, 0.6 * cm],
+        )
+        tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, 0), C['gold']),
+            ('TOPPADDING',    (0, 0), (-1, 0), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 0),
+            ('BACKGROUND',    (0, 1), (-1, 2), C['bg_card']),
+            ('TOPPADDING',    (0, 1), (-1, 1), 10),
+            ('BOTTOMPADDING', (0, 2), (-1, 2), 10),
+            ('TOPPADDING',    (0, 2), (-1, 2), 0),
+            ('LINEAFTER',     (0, 0), (-2, -1), 0.5, C['rule']),
+            ('BOX',           (0, 0), (-1, -1), 0.5, C['rule']),
+            ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        return tbl
+
+    def styled_table(data_rows, col_widths, has_rank=False):
+        """data_rows[0] = header list of strings; rest = data."""
+        header = [Paragraph(h, styles['TblHead']) for h in data_rows[0]]
+        body = []
+        for row in data_rows[1:]:
+            cells = []
+            for ci, cell in enumerate(row):
+                s = styles['TblCellCenter'] if (has_rank and ci == 0) else styles['TblCell']
+                cells.append(Paragraph(str(cell), s))
+            body.append(cells)
+
+        row_bgs = [
+            ('BACKGROUND', (0, i + 1), (-1, i + 1),
+             C['bg_card'] if i % 2 == 0 else C['bg_stripe'])
+            for i in range(len(body))
+        ]
+        tbl = Table([header] + body, colWidths=col_widths, repeatRows=1)
+        ts  = TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, 0), C['navy']),
+            ('TOPPADDING',    (0, 0), (-1, 0), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 7),
+            ('LEFTPADDING',   (0, 0), (-1, 0), 8),
+            ('RIGHTPADDING',  (0, 0), (-1, 0), 8),
+            ('TOPPADDING',    (0, 1), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+            ('LEFTPADDING',   (0, 1), (-1, -1), 8),
+            ('RIGHTPADDING',  (0, 1), (-1, -1), 8),
+            ('LINEBELOW',     (0, 0), (-1, -1), 0.3, C['rule']),
+            ('BOX',           (0, 0), (-1, -1), 0.5, C['rule']),
+            ('ALIGN',         (0, 1), (0, -1), 'CENTER') if has_rank
+                else ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ] + row_bgs)
+        ts.add('LINEAFTER', (0, 0), (0, 0), 1.5, C['gold'])
+        tbl.setStyle(ts)
+        return tbl
+
+    def two_col(left_items, right_items, left_w, right_w):
+        gap = CONTENT_W - left_w - right_w
+        lf  = KeepInFrame(left_w,  40 * cm, left_items,  mode='shrink')
+        rf  = KeepInFrame(right_w, 40 * cm, right_items, mode='shrink')
+        tbl = Table([[lf, Spacer(gap, 1), rf]], colWidths=[left_w, gap, right_w])
+        tbl.setStyle(TableStyle([
+            ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
+            ('TOPPADDING',    (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        return tbl
+
+    def course_card(course, idx):
+        title  = course.get('title',     'N/A')
+        gap    = course.get('skill_gap', 'N/A')
+        dur    = course.get('duration',  '—')
+        lvl    = course.get('level',     '—')
+        pri    = course.get('priority',  '—')
+        pri_bg = {'High': C['navy'], 'Medium': C['slate'], 'Low': C['steel']}.get(str(pri), C['slate'])
+
+        _s = lambda name, **kw: ParagraphStyle(name, **kw)
+        title_p = Paragraph(f"<b>{title}</b>",
+            _s('cT', fontName='Helvetica-Bold', fontSize=9.5, textColor=C['navy'], leading=13))
+        gap_p   = Paragraph(f"Skill Gap: <i>{gap}</i>",
+            _s('cG', fontName='Helvetica', fontSize=8.5, textColor=C['steel'], leading=12))
+        meta_p  = Paragraph(f"Duration: <b>{dur} wks</b>  ·  Level: <b>{lvl}</b>",
+            _s('cM', fontName='Helvetica', fontSize=8, textColor=C['slate'], leading=11))
+        pri_p   = Paragraph(f"<b>{pri}</b>",
+            _s('cP', fontName='Helvetica-Bold', fontSize=7.5,
+               textColor=C['white'], alignment=TA_CENTER, leading=10))
+        idx_p   = Paragraph(f"<b>0{idx}</b>",
+            _s('cI', fontName='Helvetica-Bold', fontSize=14, textColor=C['gold'], leading=18))
+
+        pri_tbl = Table([[pri_p]], colWidths=[1.5 * cm])
+        pri_tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, -1), pri_bg),
+            ('TOPPADDING',    (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
+        ]))
+
+        inner = Table(
+            [[idx_p, [title_p, Spacer(1, 2), gap_p, Spacer(1, 2), meta_p], pri_tbl]],
+            colWidths=[1.2 * cm, CONTENT_W - 3.4 * cm, 2.0 * cm],
+        )
+        inner.setStyle(TableStyle([
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN',         (2, 0), (2, 0),   'RIGHT'),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
+            ('TOPPADDING',    (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+
+        card = Table([[inner]], colWidths=[CONTENT_W])
+        card.setStyle(TableStyle([
+            ('BOX',           (0, 0), (-1, -1), 0.5, C['rule']),
+            ('BACKGROUND',    (0, 0), (-1, -1), C['bg_card']),
+            ('LINEAFTER',     (0, 0), (0, -1),  2.5, C['gold']),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
+            ('TOPPADDING',    (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        return card
+
+    # ═════════════════════════════════════════════════════════════════════
+    # HEADER / FOOTER  (called by Platypus on every content page)
+    # ═════════════════════════════════════════════════════════════════════
+
+    def draw_header_footer(canv, doc):
+        canv.saveState()
+
+        # Header band
+        HDR_H = 1.8 * cm
+        canv.setFillColor(C['navy'])
+        canv.rect(0, PAGE_H - HDR_H, PAGE_W, HDR_H, fill=1, stroke=0)
+
+        # Gold rule under header
+        canv.setFillColor(C['gold'])
+        canv.rect(0, PAGE_H - HDR_H - 0.06 * cm, PAGE_W, 0.06 * cm, fill=1, stroke=0)
+
+        # Optional logo
         if temp_logo_path and os.path.exists(temp_logo_path):
             try:
-                canvas.drawImage(temp_logo_path, 1.2*cm, A4[1] - 1.55*cm,
-                               width=1.0*cm, height=1.0*cm,
+                canv.drawImage(temp_logo_path,
+                               L_MARGIN, PAGE_H - HDR_H + 0.38 * cm,
+                               width=1.0 * cm, height=1.0 * cm,
                                preserveAspectRatio=True, mask='auto')
-            except:
-                pass
-        
-        # Title text
-        canvas.setFillColor(COLOURS['white'])
-        canvas.setFont("Helvetica-Bold", 11)
-        canvas.drawString(2.5*cm, A4[1] - 1.35*cm, "TVET Skills Intel")
-        
-        canvas.setFont("Helvetica", 7)
-        canvas.setFillColor(colors.HexColor("#94A3B8"))
-        canvas.drawString(2.5*cm, A4[1] - 1.65*cm, "AI-Powered Labour Market Intelligence")
-        
-        # Page number
-        canvas.setFillColor(COLOURS['accent-light'])
-        canvas.setFont("Helvetica", 8)
-        canvas.drawRightString(A4[0] - 1.5*cm, A4[1] - 1.45*cm, f"Page {doc.page}")
-        
-        # Footer bar
-        canvas.setFillColor(COLOURS['bg-subtle'])
-        canvas.rect(0, 0, A4[0], 1.0*cm, fill=1, stroke=0)
-        
-        canvas.setFillColor(COLOURS['accent'])
-        canvas.rect(0, 1.0*cm, A4[0], 0.05*cm, fill=1, stroke=0)
-        
-        canvas.setFillColor(COLOURS['text-light'])
-        canvas.setFont("Helvetica", 7)
-        canvas.drawString(1.5*cm, 0.4*cm, f"Generated: {datetime.now().strftime('%d %B %Y at %H:%M')}")
-        canvas.drawRightString(A4[0] - 1.5*cm, 0.4*cm, "Confidential — Academic Research Use Only")
-        
-        canvas.restoreState()
-    
-    # DATA COLLECTION
-    story = []
-    
-    total_jobs = len(st.session_state.processed_jobs) if st.session_state.processed_jobs is not None else 0
-    
-    all_skills = []
-    if st.session_state.processed_jobs is not None and 'normalized_skills' in st.session_state.processed_jobs.columns:
-        for skills in st.session_state.processed_jobs['normalized_skills']:
-            all_skills.extend(skills)
-    unique_skills = len(set(all_skills))
-    skill_counts = Counter(all_skills)
-    top_skills = skill_counts.most_common(10)
-    
-    total_gaps = len(st.session_state.gap_matrix) if st.session_state.gap_matrix is not None else 0
-    total_courses = len(st.session_state.generated_courses)
-    
-    # COVER SECTION
-    story.append(Spacer(1, 3*cm))
-    story.append(Paragraph("Labour Market Intelligence Report", styles['CustomReportTitle']))
-    story.append(Paragraph(
-        f"TVET Skills Intel System  |  {datetime.now().strftime('%B %Y')}  |  Open University of Kenya",
-        styles['CustomReportSubtitle']
-    ))
-    story.append(Spacer(1, 0.3*cm))
-    
-    # EXECUTIVE SUMMARY
-    story.append(Paragraph("Executive Summary", styles['CustomSectionHeading']))
-    summary_text = (
-        f"This report presents findings from the AI-powered Labour Market Intelligence "
-        f"System developed for Kenyan TVET institutions. A corpus of <b>{total_jobs}</b> "
-        f"job postings was processed, yielding <b>{unique_skills}</b> unique normalised skills. "
-        f"Gap analysis identified <b>{total_gaps}</b> curriculum-market mismatches, from which "
-        f"<b>{total_courses}</b> short course recommendations were generated."
-    )
-    story.append(Paragraph(summary_text, styles['CustomBodyText']))
-    story.append(Spacer(1, 0.4*cm))
-    
-    # KEY METRICS
-    story.append(Paragraph("Key Metrics", styles['CustomSectionHeading']))
-    metrics_data = [
-        [Paragraph(str(total_jobs), styles['CustomStatNumber']),
-         Paragraph(str(unique_skills), styles['CustomStatNumber']),
-         Paragraph(str(total_gaps), styles['CustomStatNumber']),
-         Paragraph(str(total_courses), styles['CustomStatNumber'])],
-        [Paragraph("Jobs Analysed", styles['CustomStatLabel']),
-         Paragraph("Skills Extracted", styles['CustomStatLabel']),
-         Paragraph("Gaps Identified", styles['CustomStatLabel']),
-         Paragraph("Courses", styles['CustomStatLabel'])],
-    ]
-    metrics_table = Table(metrics_data, colWidths=[doc.width/4.0]*4)
-    metrics_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-        ('TOPPADDING', (0, 1), (-1, 1), 0),
-        ('BOTTOMPADDING', (0, 1), (-1, 1), 12),
-        ('LINEBELOW', (0, 1), (-1, 1), 0.5, COLOURS['border']),
-    ]))
-    story.append(metrics_table)
-    story.append(Spacer(1, 0.3*cm))
-    
-    # JOB POSTING TRENDS
-    story.append(Paragraph("Job Posting Trends", styles['CustomSectionHeading']))
-    monthly_counts, peak_month, trend_stats = get_trend_analysis()
-    if monthly_counts is not None and len(monthly_counts) > 0:
-        trend_data = [["Month", "Postings"]]
-        for _, row in monthly_counts.iterrows():
-            trend_data.append([row['year_month_str'], str(row['count'])])
-        
-        trend_table = Table(trend_data, colWidths=[6*cm, 6*cm])
-        trend_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), COLOURS['primary']),
-            ('TEXTCOLOR', (0, 0), (-1, 0), COLOURS['white']),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 1), (-1, -1), COLOURS['text-mid']),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [COLOURS['white'], COLOURS['bg-light']]),
-            ('GRID', (0, 0), (-1, -1), 0.3, COLOURS['border']),
-        ]))
-        story.append(trend_table)
-        story.append(Spacer(1, 0.2*cm))
-        
-        # Handle growth display safely
-        if trend_stats.get('growth') is not None and trend_stats['growth'] < 1000:
-            growth_text = f"{trend_stats['growth']:.1f}%"
+                txt_x = L_MARGIN + 1.2 * cm
+            except Exception:
+                txt_x = L_MARGIN + 0.38 * cm
         else:
-            if len(monthly_counts) > 1:
-                first_count = monthly_counts.iloc[0]['count']
-                last_count = monthly_counts.iloc[-1]['count']
-                abs_change = last_count - first_count
-                growth_text = f"+{abs_change} jobs" if abs_change >= 0 else f"{abs_change} jobs"
-            else:
-                growth_text = "Insufficient data"
-        
-        peak_text = (
-            f"<b>Peak Month:</b> {peak_month['year_month_str']} ({peak_month['count']} postings) | "
-            f"<b>Growth:</b> {growth_text} | "
-            f"<b>Monthly Average:</b> {trend_stats['avg']:.0f}"
-        )
-        story.append(Paragraph(peak_text, styles['CustomCaption']))
+            # Gold square accent when no logo
+            canv.setFillColor(C['gold'])
+            canv.rect(L_MARGIN, PAGE_H - HDR_H + 0.55 * cm, 0.22 * cm, 0.22 * cm, fill=1, stroke=0)
+            txt_x = L_MARGIN + 0.38 * cm
+
+        canv.setFillColor(C['white'])
+        canv.setFont("Helvetica-Bold", 10)
+        canv.drawString(txt_x, PAGE_H - HDR_H + 0.62 * cm, "TVET SKILLS INTEL")
+        canv.setFillColor(C['silver'])
+        canv.setFont("Helvetica", 7.5)
+        canv.drawString(txt_x, PAGE_H - HDR_H + 0.28 * cm,
+                        "AI-Powered Labour Market Intelligence  ·  Open University of Kenya")
+
+        # Gold pill page number
+        pg_text = f"PAGE  {doc.page}"
+        pill_w, pill_h = 1.8 * cm, 0.45 * cm
+        pill_x = PAGE_W - R_MARGIN - pill_w
+        pill_y = PAGE_H - HDR_H + 0.33 * cm
+        canv.setFillColor(C['gold'])
+        canv.roundRect(pill_x, pill_y, pill_w, pill_h, 0.1 * cm, fill=1, stroke=0)
+        canv.setFillColor(C['navy'])
+        canv.setFont("Helvetica-Bold", 7.5)
+        canv.drawCentredString(pill_x + pill_w / 2, pill_y + 0.14 * cm, pg_text)
+
+        # Footer
+        FTR_H = 0.9 * cm
+        canv.setFillColor(C['gold'])
+        canv.rect(0, FTR_H, PAGE_W, 0.04 * cm, fill=1, stroke=0)
+        canv.setFillColor(C['bg_stripe'])
+        canv.rect(0, 0, PAGE_W, FTR_H, fill=1, stroke=0)
+        canv.setFillColor(C['steel'])
+        canv.setFont("Helvetica", 6.5)
+        canv.drawString(L_MARGIN, 0.32 * cm,
+                        f"Generated {datetime.now().strftime('%d %B %Y at %H:%M')}")
+        canv.drawRightString(PAGE_W - R_MARGIN, 0.32 * cm,
+                             "Confidential  ·  Academic Research Use Only")
+        canv.restoreState()
+
+    # ═════════════════════════════════════════════════════════════════════
+    # COVER PAGE  (raw canvas, merged later)
+    # ═════════════════════════════════════════════════════════════════════
+
+    def build_cover(canv):
+        # Full-page navy background
+        canv.setFillColor(C['navy'])
+        canv.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+
+        # Bottom-left mid-navy slab
+        canv.setFillColor(C['navy_mid'])
+        canv.rect(0, 0, PAGE_W * 0.45, PAGE_H * 0.38, fill=1, stroke=0)
+
+        # Gold left-edge stripe
+        canv.setFillColor(C['gold'])
+        canv.rect(0, 0, 0.45 * cm, PAGE_H, fill=1, stroke=0)
+
+        # Top-right angled light panel
+        p = canv.beginPath()
+        p.moveTo(PAGE_W * 0.55, PAGE_H)
+        p.lineTo(PAGE_W, PAGE_H)
+        p.lineTo(PAGE_W, PAGE_H * 0.62)
+        p.lineTo(PAGE_W * 0.55, PAGE_H)
+        canv.setFillColor(C['navy_light'])
+        canv.drawPath(p, fill=1, stroke=0)
+
+        # Mid-page gold rule
+        rule_y = PAGE_H * 0.52
+        canv.setFillColor(C['gold'])
+        canv.rect(1.6 * cm, rule_y, PAGE_W * 0.55, 0.07 * cm, fill=1, stroke=0)
+
+        # Report-type pill tag
+        canv.setFillColor(C['gold'])
+        canv.roundRect(1.6 * cm, rule_y + 0.5 * cm, 4.8 * cm, 0.55 * cm, 0.12 * cm,
+                       fill=1, stroke=0)
+        canv.setFillColor(C['navy'])
+        canv.setFont("Helvetica-Bold", 8)
+        canv.drawString(1.6 * cm + 0.28 * cm, rule_y + 0.68 * cm, "LABOUR MARKET INTELLIGENCE")
+
+        # Main title
+        canv.setFillColor(C['white'])
+        canv.setFont("Helvetica-Bold", 28)
+        canv.drawString(1.6 * cm, rule_y + 1.6 * cm, "Skills Gap &")
+        canv.drawString(1.6 * cm, rule_y + 0.7 * cm, "Curriculum Analysis")
+
+        # Subtitle
+        canv.setFillColor(C['silver'])
+        canv.setFont("Helvetica", 10)
+        canv.drawString(1.6 * cm, rule_y - 0.2 * cm,
+                        f"TVET Skills Intel System  ·  {datetime.now().strftime('%B %Y')}")
+
+        # Bottom meta block
+        meta_y = 2.6 * cm
+        canv.setFillColor(C['navy_light'])
+        canv.rect(1.6 * cm, meta_y - 0.3 * cm, PAGE_W - 3.2 * cm, 1.8 * cm, fill=1, stroke=0)
+
+        canv.setFillColor(C['gold'])
+        canv.setFont("Helvetica-Bold", 8)
+        canv.drawString(2.0 * cm, meta_y + 1.0 * cm, "PREPARED FOR")
+        canv.setFillColor(C['white'])
+        canv.setFont("Helvetica-Bold", 11)
+        canv.drawString(2.0 * cm, meta_y + 0.55 * cm,
+                        "Open University of Kenya — TVET Division")
+        canv.setFillColor(C['silver'])
+        canv.setFont("Helvetica", 8)
+        canv.drawString(2.0 * cm, meta_y + 0.2 * cm,
+                        "Confidential  ·  Academic Research Use Only")
+
+        # Decorative corner dots
+        for i in range(4):
+            canv.setFillColor(C['gold'] if i % 2 == 0 else C['navy_light'])
+            canv.rect(PAGE_W - 1.4 * cm + i * 0.18 * cm,
+                      PAGE_H * 0.38 + i * 0.18 * cm,
+                      0.14 * cm, 0.14 * cm, fill=1, stroke=0)
+
+    # ═════════════════════════════════════════════════════════════════════
+    # BUILD STORY
+    # ═════════════════════════════════════════════════════════════════════
+
+    styles = make_styles()
+    story  = []
+
+    # Page title
+    story.append(Paragraph("Labour Market Intelligence Report", styles['RptTitle']))
+    story.append(Paragraph(
+        f"TVET Skills Intel  ·  {datetime.now().strftime('%B %Y')}  ·  Open University of Kenya",
+        styles['RptSubtitle'],
+    ))
+    story.append(HRFlowable(width="100%", thickness=1, color=C['gold'],
+                             spaceBefore=0, spaceAfter=12))
+
+    # Executive Summary
+    story.append(Paragraph("Executive Summary", styles['SecHeading']))
+    story.append(section_rule())
+    story.append(Paragraph(
+        f"This report presents findings from the AI-powered Labour Market Intelligence System "
+        f"developed for Kenyan TVET institutions. A corpus of <b>{total_jobs}</b> job postings "
+        f"was analysed, yielding <b>{unique_skills}</b> unique normalised skills mapped against "
+        f"the ESCO taxonomy. Gap analysis identified <b>{total_gaps}</b> curriculum-market "
+        f"mismatches, from which <b>{total_courses}</b> targeted short course recommendations "
+        f"were generated to address the highest-priority deficits.",
+        styles['Body'],
+    ))
+    story.append(Spacer(1, 0.3 * cm))
+
+    # Key Metrics
+    story.append(Paragraph("Key Metrics at a Glance", styles['SecHeading']))
+    story.append(section_rule())
+    story.append(metric_cards([
+        (total_jobs,    "Jobs Analysed"),
+        (unique_skills, "Skills Extracted"),
+        (total_gaps,    "Gaps Identified"),
+        (total_courses, "Courses Designed"),
+    ]))
+    story.append(Spacer(1, 0.5 * cm))
+
+    # Two-column: Trends | Top Skills
+    lw = CONTENT_W * 0.44
+    rw = CONTENT_W * 0.52
+
+    trend_items = [
+        Paragraph("Job Posting Trends", styles['SecHeading']),
+        HRFlowable(width="100%", thickness=0.5, color=C['gold'],
+                   spaceBefore=0, spaceAfter=8),
+    ]
+    if monthly_counts is not None and len(monthly_counts) > 0:
+        trend_rows = [["Month", "Postings"]]
+        for _, row in monthly_counts.iterrows():
+            trend_rows.append([row['year_month_str'], str(row['count'])])
+        trend_items.append(styled_table(trend_rows, [lw * 0.58, lw * 0.38]))
+        trend_items.append(Spacer(1, 4))
+
+        # Safe growth display
+        if trend_stats.get('growth') is not None and trend_stats['growth'] < 1000:
+            growth_str = f"{trend_stats['growth']:.1f}%"
+        elif len(monthly_counts) > 1:
+            delta = monthly_counts.iloc[-1]['count'] - monthly_counts.iloc[0]['count']
+            growth_str = f"+{delta} jobs" if delta >= 0 else f"{delta} jobs"
+        else:
+            growth_str = "N/A"
+
+        trend_items.append(Paragraph(
+            f"Peak: {peak_month['year_month_str']} ({peak_month['count']} postings)  ·  "
+            f"Avg: {trend_stats['avg']:.0f} / month  ·  Growth: {growth_str}",
+            styles['Caption'],
+        ))
     else:
-        story.append(Paragraph("Trend data unavailable.", styles['CustomBodyText']))
-    story.append(Spacer(1, 0.3*cm))
-    
-    # TOP 10 SKILLS
-    story.append(Paragraph("Top 10 In-Demand Skills", styles['CustomSectionHeading']))
+        trend_items.append(Paragraph("Trend data unavailable.", styles['Body']))
+
+    skills_items = [
+        Paragraph("Top 10 In-Demand Skills", styles['SecHeading']),
+        HRFlowable(width="100%", thickness=0.5, color=C['gold'],
+                   spaceBefore=0, spaceAfter=8),
+    ]
     if top_skills:
-        skills_data = [["Rank", "Skill", "Frequency", "% of Postings"]]
-        for i, (skill, cnt) in enumerate(top_skills, 1):
-            pct = f"{(cnt / max(total_jobs, 1) * 100):.1f}%"
-            skills_data.append([str(i), skill, str(cnt), pct])
-        
-        skills_table = Table(skills_data, colWidths=[1.2*cm, 8*cm, 2.5*cm, 2.5*cm])
-        skills_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), COLOURS['primary']),
-            ('TEXTCOLOR', (0, 0), (-1, 0), COLOURS['white']),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
-            ('ALIGN', (2, 0), (3, -1), 'CENTER'),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 1), (-1, -1), COLOURS['text-mid']),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [COLOURS['white'], COLOURS['bg-light']]),
-            ('GRID', (0, 0), (-1, -1), 0.3, COLOURS['border']),
-        ]))
-        story.append(skills_table)
+        skill_rows = [["#", "Skill", "Freq", "%"]]
+        for i, (sk, cnt) in enumerate(top_skills, 1):
+            pct = f"{cnt / max(total_jobs, 1) * 100:.1f}%"
+            skill_rows.append([str(i), sk, str(cnt), pct])
+        skills_items.append(
+            styled_table(skill_rows, [rw * 0.08, rw * 0.52, rw * 0.20, rw * 0.18],
+                         has_rank=True)
+        )
     else:
-        story.append(Paragraph("No skill data available.", styles['CustomBodyText']))
-    story.append(Spacer(1, 0.3*cm))
-    
-    # PRIORITISED GAPS
-    story.append(Paragraph("Prioritised Skills Gaps", styles['CustomSectionHeading']))
+        skills_items.append(Paragraph("No skill data available.", styles['Body']))
+
+    story.append(two_col(trend_items, skills_items, lw, rw))
+    story.append(Spacer(1, 0.5 * cm))
+
+    # Prioritised Gaps
+    story.append(Paragraph("Prioritised Skills Gaps", styles['SecHeading']))
+    story.append(section_rule())
     if st.session_state.prioritized_gaps is not None:
-        gaps_data = [["Rank", "Skill", "Priority", "Score"]]
-        for i, row in st.session_state.prioritized_gaps.head(10).iterrows():
-            priority_text = row['priority_tier']
-            gaps_data.append([str(i+1), row['skill'], priority_text, f"{row['priority_score']:.3f}"])
-        
-        gaps_table = Table(gaps_data, colWidths=[1.2*cm, 9*cm, 2.5*cm, 2.2*cm])
-        gaps_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), COLOURS['primary']),
-            ('TEXTCOLOR', (0, 0), (-1, 0), COLOURS['white']),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
-            ('ALIGN', (3, 0), (3, -1), 'CENTER'),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('TEXTCOLOR', (0, 1), (-1, -1), COLOURS['text-mid']),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [COLOURS['white'], COLOURS['bg-light']]),
-            ('GRID', (0, 0), (-1, -1), 0.3, COLOURS['border']),
-        ]))
-        story.append(gaps_table)
+        gaps_rows = [["Rank", "Skill", "Priority Tier", "Priority Score"]]
+        for i, row in enumerate(st.session_state.prioritized_gaps.head(10).itertuples(), 1):
+            gaps_rows.append([str(i), row.skill, row.priority_tier, f"{row.priority_score:.3f}"])
+        story.append(styled_table(
+            gaps_rows,
+            [1.1 * cm, CONTENT_W - 6.8 * cm, 2.8 * cm, 2.8 * cm],
+            has_rank=True,
+        ))
     else:
-        story.append(Paragraph("No gaps identified.", styles['CustomBodyText']))
-    story.append(Spacer(1, 0.3*cm))
-    
-    # COURSE RECOMMENDATIONS
-    story.append(Paragraph("Short Course Recommendations", styles['CustomSectionHeading']))
+        story.append(Paragraph("No gaps identified.", styles['Body']))
+    story.append(Spacer(1, 0.5 * cm))
+
+    # Course Recommendations
+    story.append(Paragraph("Short Course Recommendations", styles['SecHeading']))
+    story.append(section_rule())
     if st.session_state.generated_courses:
-        for course in st.session_state.generated_courses[:5]:
-            course_text = (
-                f"<b>{course.get('title', 'N/A')}</b><br/>"
-                f"Skill Gap: {course.get('skill_gap', 'N/A')}<br/>"
-                f"Duration: {course.get('duration', 'N/A')} weeks | "
-                f"Level: {course.get('level', 'N/A')} | "
-                f"Priority: {course.get('priority', 'N/A')}"
-            )
-            story.append(Paragraph(course_text, styles['CustomBodyText']))
-            story.append(Spacer(1, 0.1*cm))
+        for i, course in enumerate(st.session_state.generated_courses[:5], 1):
+            story.append(course_card(course, i))
+            story.append(Spacer(1, 0.18 * cm))
     else:
-        story.append(Paragraph("No courses generated.", styles['CustomBodyText']))
-    story.append(Spacer(1, 0.3*cm))
-    
-    # METHODOLOGICAL NOTE
-    story.append(Paragraph("Methodological Note", styles['CustomSectionHeading']))
-    method_text = (
-        "This report was generated using the TVET Skills Intel AI-powered labour market intelligence system. "
-        "Skills were extracted using a BERT-based NLP pipeline, normalised against the ESCO taxonomy, "
-        "and prioritised using a multi-criteria classifier. Course recommendations follow the constructive "
-        "alignment framework (Biggs, 1996)."
+        story.append(Paragraph("No courses generated.", styles['Body']))
+    story.append(Spacer(1, 0.3 * cm))
+
+    # Methodological Note
+    story.append(Paragraph("Methodological Note", styles['SecHeading']))
+    story.append(section_rule())
+    story.append(Paragraph(
+        "Skills were extracted using a BERT-based NLP pipeline and normalised against the "
+        "ESCO occupational taxonomy (v1.1). Gap prioritisation used a multi-criteria classifier "
+        "combining market frequency, wage premium signals, and curriculum coverage ratios. "
+        "Course recommendations follow the constructive alignment framework (Biggs, 1996). "
+        "All data is sourced from publicly available Kenyan job boards.",
+        styles['Body'],
+    ))
+
+    # ═════════════════════════════════════════════════════════════════════
+    # RENDER
+    # ═════════════════════════════════════════════════════════════════════
+
+    timestamp    = datetime.now().strftime("%Y%m%d_%H%M%S")
+    tmp_out      = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    tmp_out.close()
+    tmp_cover    = tmp_out.name + ".cover.pdf"
+    tmp_content  = tmp_out.name + ".content.pdf"
+
+    # Cover page
+    c = cv_mod.Canvas(tmp_cover, pagesize=A4)
+    build_cover(c)
+    c.showPage()
+    c.save()
+
+    # Content pages
+    doc = SimpleDocTemplate(
+        tmp_content,
+        pagesize=A4,
+        topMargin=T_MARGIN + 0.4 * cm,
+        bottomMargin=B_MARGIN + 0.6 * cm,
+        leftMargin=L_MARGIN,
+        rightMargin=R_MARGIN,
+        title="TVET Labour Market Intelligence Report",
+        author="TVET Skills Intel",
+        subject="Skills Gap Analysis and Course Recommendations",
     )
-    story.append(Paragraph(method_text, styles['CustomBodyText']))
-    
-    # BUILD PDF
-    doc.build(story, onFirstPage=header_footer, onLaterPages=header_footer)
-    
+    doc.build(story, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
+
+    # Merge cover + content
+    writer = PdfWriter()
+    for src in [tmp_cover, tmp_content]:
+        rdr = PdfReader(src)
+        for pg in rdr.pages:
+            writer.add_page(pg)
+    with open(tmp_out.name, "wb") as f:
+        writer.write(f)
+
+    # Clean up
+    for tmp in [tmp_cover, tmp_content]:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
     if temp_logo_path and os.path.exists(temp_logo_path):
-        os.unlink(temp_logo_path)
-    
-    return temp_file.name
+        try:
+            os.unlink(temp_logo_path)
+        except OSError:
+            pass
+
+    return tmp_out.name
 
 # ============================================================
 # DASHBOARD PAGE
