@@ -728,7 +728,8 @@ def run_full_analysis():
             return True
     return False
 # ============================================================
-# PDF REPORT GENERATION 
+# PDF REPORT GENERATION  —  drop-in replacement
+# Requires: reportlab, pypdf
 # ============================================================
 
 def generate_pdf_report():
@@ -1087,25 +1088,25 @@ def generate_pdf_report():
         canv.setFillColor(C['gold'])
         canv.rect(1.6 * cm, rule_y, PAGE_W * 0.55, 0.07 * cm, fill=1, stroke=0)
 
-        # Report-type pill tag
+        # Main title — well above the gold rule and pill tag
+        canv.setFillColor(C['white'])
+        canv.setFont("Helvetica-Bold", 28)
+        canv.drawString(1.6 * cm, rule_y + 4.2 * cm, "Skills Gap &")
+        canv.drawString(1.6 * cm, rule_y + 3.2 * cm, "Curriculum Analysis")
+
+        # Subtitle
+        canv.setFillColor(C['silver'])
+        canv.setFont("Helvetica", 10)
+        canv.drawString(1.6 * cm, rule_y + 2.4 * cm,
+                        f"TVET Skills Intel System  ·  {datetime.now().strftime('%B %Y')}")
+
+        # Report-type pill tag — just above the gold rule
         canv.setFillColor(C['gold'])
         canv.roundRect(1.6 * cm, rule_y + 0.5 * cm, 4.8 * cm, 0.55 * cm, 0.12 * cm,
                        fill=1, stroke=0)
         canv.setFillColor(C['navy'])
         canv.setFont("Helvetica-Bold", 8)
         canv.drawString(1.6 * cm + 0.28 * cm, rule_y + 0.68 * cm, "LABOUR MARKET INTELLIGENCE")
-
-        # Main title
-        canv.setFillColor(C['white'])
-        canv.setFont("Helvetica-Bold", 28)
-        canv.drawString(1.6 * cm, rule_y + 1.6 * cm, "Skills Gap &")
-        canv.drawString(1.6 * cm, rule_y + 0.7 * cm, "Curriculum Analysis")
-
-        # Subtitle
-        canv.setFillColor(C['silver'])
-        canv.setFont("Helvetica", 10)
-        canv.drawString(1.6 * cm, rule_y - 0.2 * cm,
-                        f"TVET Skills Intel System  ·  {datetime.now().strftime('%B %Y')}")
 
         # Bottom meta block
         meta_y = 2.6 * cm
