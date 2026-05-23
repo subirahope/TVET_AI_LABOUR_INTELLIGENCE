@@ -728,10 +728,6 @@ def run_full_analysis():
 # ============================================================
 # PDF REPORT GENERATION
 # ============================================================
-# ============================================================
-# REDESIGNED PDF REPORT GENERATION
-# ============================================================
-
 def generate_pdf_report():
     """
     Generate a professional PDF report with clean, modern layout
@@ -801,7 +797,7 @@ def generate_pdf_report():
     )
     
     # ============================================================
-    # CUSTOM STYLES (with unique names to avoid conflicts)
+    # CUSTOM STYLES 
     # ============================================================
     styles = getSampleStyleSheet()
     
@@ -901,7 +897,7 @@ def generate_pdf_report():
         leading=10
     ))
     
-    # ============================================================
+       # ============================================================
     # PAGE HEADER/FOOTER CALLBACK
     # ============================================================
     def header_footer(canvas, doc):
@@ -909,11 +905,33 @@ def generate_pdf_report():
         
         # --- Header bar ---
         canvas.setFillColor(COLOURS['primary'])
-        canvas.rect(0, A4[1] - 1.6*cm, A4[0], 1.6*cm, fill=1, stroke=0)
+        canvas.rect(0, A4[1] - 1.8*cm, A4[0], 1.8*cm, fill=1, stroke=0)
         
-        # Gold accent line
-        canvas.setFillColor(COLOURS['accent'])
-        canvas.rect(0, A4[1] - 1.6*cm, A4[0], 0.15*cm, fill=1, stroke=0)
+        # --- Fading gold accent line (gradient from left to right) ---
+        # Create a gradient effect by drawing multiple rectangles with decreasing opacity
+        start_x = 0
+        end_x = A4[0]
+        bar_height = 0.08*cm  # Thinner bar (2.8pt instead of 4.2pt)
+        bar_y = A4[1] - 1.8*cm  # Position at bottom of header bar
+        
+        # Draw fading gradient using multiple segments
+        segments = 20
+        for i in range(segments):
+            # Calculate segment width
+            seg_width = (end_x - start_x) / segments
+            seg_start = start_x + (i * seg_width)
+            
+            # Calculate opacity: start at 100% (left), fade to 0% (right)
+            # Using i/segments for linear fade
+            alpha = 1.0 - (i / segments)
+            
+            # Adjust gold colour with alpha (using HexColor with alpha)
+            # For gold: #C9A84C
+            gold_r, gold_g, gold_b = 201, 168, 76  # RGB values for #C9A84C
+            
+            # Set fill color with alpha (using RGB with alpha parameter)
+            canvas.setFillColorRGB(gold_r/255.0, gold_g/255.0, gold_b/255.0, alpha=alpha)
+            canvas.rect(seg_start, bar_y, seg_width, bar_height, fill=1, stroke=0)
         
         # Logo
         if temp_logo_path and os.path.exists(temp_logo_path):
@@ -921,7 +939,7 @@ def generate_pdf_report():
                 canvas.drawImage(
                     temp_logo_path, 
                     1.2*cm, 
-                    A4[1] - 1.4*cm,
+                    A4[1] - 1.55*cm,
                     width=1.0*cm, 
                     height=1.0*cm,
                     preserveAspectRatio=True,
@@ -930,21 +948,21 @@ def generate_pdf_report():
             except:
                 pass
         
-        # Title text
+        # Title text - adjusted Y positions to fit within the taller header
         canvas.setFillColor(COLOURS['white'])
         canvas.setFont("Helvetica-Bold", 11)
-        canvas.drawString(2.5*cm, A4[1] - 1.2*cm, "TVET Skills Intel")
+        canvas.drawString(2.5*cm, A4[1] - 1.35*cm, "TVET Skills Intel")
         
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(colors.HexColor("#94A3B8"))
-        canvas.drawString(2.5*cm, A4[1] - 1.5*cm, "AI-Powered Labour Market Intelligence")
+        canvas.drawString(2.5*cm, A4[1] - 1.65*cm, "AI-Powered Labour Market Intelligence")
         
         # Page number (right side)
         canvas.setFillColor(COLOURS['accent-light'])
         canvas.setFont("Helvetica", 8)
         canvas.drawRightString(
             A4[0] - 1.5*cm, 
-            A4[1] - 1.3*cm, 
+            A4[1] - 1.45*cm, 
             f"Page {doc.page}"
         )
         
@@ -952,8 +970,9 @@ def generate_pdf_report():
         canvas.setFillColor(COLOURS['bg-subtle'])
         canvas.rect(0, 0, A4[0], 1.0*cm, fill=1, stroke=0)
         
+        # Subtle footer line (thin, no fade needed)
         canvas.setFillColor(COLOURS['accent'])
-        canvas.rect(0, 1.0*cm, A4[0], 0.1*cm, fill=1, stroke=0)
+        canvas.rect(0, 1.0*cm, A4[0], 0.05*cm, fill=1, stroke=0)
         
         canvas.setFillColor(COLOURS['text-light'])
         canvas.setFont("Helvetica", 7)
@@ -1011,8 +1030,8 @@ def generate_pdf_report():
     
     summary_text = (
         f"This report presents findings from the AI-powered Labour Market Intelligence "
-        f"System developed for Kenyan TVET institutions under the Master of Data Science "
-        f"research programme at the Open University of Kenya. A corpus of <b>{total_jobs}</b> "
+        f"System developed for Kenyan TVET institutions. "
+        f". A corpus of <b>{total_jobs}</b> "
         f"job postings was processed, yielding <b>{unique_skills}</b> unique normalised skills. "
         f"Gap analysis identified <b>{total_gaps}</b> curriculum-market mismatches, from which "
         f"<b>{total_courses}</b> short course recommendations were generated. Findings are "
@@ -1228,17 +1247,17 @@ def generate_pdf_report():
     # ============================================================
     # METHODOLOGICAL NOTE
     # ============================================================
+        # ============================================================
+    # METHODOLOGICAL NOTE
+    # ============================================================
     story.append(Paragraph("Methodological Note", styles['CustomSectionHeading']))
     
     method_text = (
         "This report was generated using the TVET Skills Intel AI-powered labour market intelligence system. "
-        "Data collection involved attempting web scraping from five Kenyan employment platforms (LinkedIn, "
-        "BrighterMonday, Fuzu, MyJobMag, IkoKazi). Where anti-scraping measures prevented direct collection, "
-        "publicly available datasets were used as a representative corpus — a documented limitation "
-        "acknowledged in the research methodology. Skills were extracted using a BERT-based NER pipeline, "
-        "normalised against the ESCO taxonomy, and prioritised using a multi-criteria Random Forest classifier. "
-        "Course recommendations are aligned with the constructive alignment framework (Biggs, 1996) and "
-        "are implementable within existing TVET regulatory authority for institutional-level short course approval."
+        "Data was sourced from publicly available job posting datasets. Skills were extracted using a BERT-based "
+        "NLP pipeline, normalised against the ESCO taxonomy, and prioritised using a multi-criteria classifier. "
+        "Course recommendations follow the constructive alignment framework (Biggs, 1996) and are implementable "
+        "under existing TVET institutional authority for short course approval."
     )
     story.append(Paragraph(method_text, styles['CustomBodyText']))
     story.append(Spacer(1, 0.2*cm))
@@ -1250,8 +1269,7 @@ def generate_pdf_report():
     
     ref_text = (
         "Wanyama Hope Subira (2026). AI-Powered Labour Market Analytics to Develop Industry-Relevant Courses "
-        "Among TVET Institutions in Kenya. MSc Data Science Research Proposal, Open University of Kenya. "
-        "Supervised by Prof. Davis Bundi."
+        "Among TVET Institutions in Kenya. "
     )
     story.append(Paragraph(ref_text, styles['CustomBodyText']))
     
