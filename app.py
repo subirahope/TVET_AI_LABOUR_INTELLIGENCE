@@ -85,11 +85,12 @@ def logo_exists():
 # ============================================================
 # INJECT FAVICON
 # ============================================================
-favicon_base64 = get_favicon_base64()
-if favicon_base64:
-    st.markdown(f'''
-    <link rel="icon" type="image/png" href="data:image/png;base64,{favicon_base64}">
-    ''', unsafe_allow_html=True)
+st.set_page_config(
+    page_title="TVET Skills Intel",
+    page_icon="assets/logo.png",  # Direct path - Streamlit handles it
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # ============================================================
 # REDESIGNED STYLES
@@ -992,7 +993,7 @@ def generate_pdf_report():
         return card
 
     # ═════════════════════════════════════════════════════════════════════
-    # HEADER / FOOTER  (called by Platypus on every content page)
+    # HEADER / FOOTER (called by Platypus on every content page)
     # ═════════════════════════════════════════════════════════════════════
 
     def draw_header_footer(canv, doc):
@@ -1029,7 +1030,7 @@ def generate_pdf_report():
         canv.setFillColor(C['silver'])
         canv.setFont("Helvetica", 7.5)
         canv.drawString(txt_x, PAGE_H - HDR_H + 0.28 * cm,
-                        "AI-Powered Labour Market Intelligence  ·  HSW")
+                        "AI-Powered Labour Market Intelligence  ·  Open University of Kenya")
 
         # Gold pill page number
         pg_text = f"PAGE  {doc.page}"
@@ -1042,22 +1043,23 @@ def generate_pdf_report():
         canv.setFont("Helvetica-Bold", 7.5)
         canv.drawCentredString(pill_x + pill_w / 2, pill_y + 0.14 * cm, pg_text)
 
-            # Footer
+        # Footer
         FTR_H = 0.9 * cm
-        canvas.setFillColor(C['gold'])
-        canvas.rect(0, FTR_H, PAGE_W, 0.04 * cm, fill=1, stroke=0)
-        canvas.setFillColor(C['bg_stripe'])
-        canvas.rect(0, 0, PAGE_W, FTR_H, fill=1, stroke=0)
-        canvas.setFillColor(C['steel'])
-        canvas.setFont("Helvetica", 6.5)
-        canvas.drawString(L_MARGIN, 0.32 * cm,
-                        f"Generated {current_datetime.strftime('%d %B %Y at %H:%M')} EAT")
-        canvas.drawRightString(PAGE_W - R_MARGIN, 0.32 * cm,
+        canv.setFillColor(C['gold'])
+        canv.rect(0, FTR_H, PAGE_W, 0.04 * cm, fill=1, stroke=0)
+        canv.setFillColor(C['bg_stripe'])
+        canv.rect(0, 0, PAGE_W, FTR_H, fill=1, stroke=0)
+        canv.setFillColor(C['steel'])
+        canv.setFont("Helvetica", 6.5)
+        canv.drawString(L_MARGIN, 0.32 * cm,
+                        f"Generated {datetime.now().strftime('%d %B %Y at %H:%M')} EAT")
+        canv.drawRightString(PAGE_W - R_MARGIN, 0.32 * cm,
                              "Confidential  ·  Academic Research Use Only")
-        canvas.restoreState()
+        
+        canv.restoreState()
 
     # ═════════════════════════════════════════════════════════════════════
-    # COVER PAGE  (raw canvas, merged later)
+    # COVER PAGE (raw canvas, merged later)
     # ═════════════════════════════════════════════════════════════════════
 
     def build_cover(canv):
@@ -1101,7 +1103,7 @@ def generate_pdf_report():
 
         # Report-type pill tag — just above the gold rule
         canv.setFillColor(C['gold'])
-        canv.roundRect(1.6 * cm, rule_y + 0.5 * cm, 5.0 * cm, 0.55 * cm, 0.12 * cm,
+        canv.roundRect(1.6 * cm, rule_y + 0.5 * cm, 5.5 * cm, 0.55 * cm, 0.12 * cm,
                        fill=1, stroke=0)
         canv.setFillColor(C['navy'])
         canv.setFont("Helvetica-Bold", 8)
@@ -1118,7 +1120,7 @@ def generate_pdf_report():
         canv.setFillColor(C['white'])
         canv.setFont("Helvetica-Bold", 11)
         canv.drawString(2.0 * cm, meta_y + 0.55 * cm,
-                        "The Nairobi National Polytechnic")
+                        "Open University of Kenya")
         canv.setFillColor(C['silver'])
         canv.setFont("Helvetica", 8)
         canv.drawString(2.0 * cm, meta_y + 0.2 * cm,
