@@ -930,59 +930,137 @@ def generate_pdf_report():
         return tbl
 
     def course_card(course, idx):
-        title  = course.get('title',     'N/A')
-        gap    = course.get('skill_gap', 'N/A')
-        dur    = course.get('duration',  '—')
-        lvl    = course.get('level',     '—')
-        pri    = course.get('priority',  '—')
-        pri_bg = {'High': C['navy'], 'Medium': C['slate'], 'Low': C['steel']}.get(str(pri), C['slate'])
+    title = course.get('title', 'N/A')
+    gap = course.get('skill_gap', 'N/A')
+    dur = course.get('duration', '—')
+    lvl = course.get('level', '—')
+    pri = course.get('priority', '—')
+    prereqs = course.get('prerequisites', ['None'])
+    modules = course.get('modules', [])
+    
+    # Get learning outcomes (if available, otherwise provide defaults based on skill gap)
+    outcomes = course.get('learning_outcomes', [])
+    if not outcomes:
+        # Provide sensible defaults based on skill gap
+        if 'Machine Learning' in title or 'Machine Learning' in gap:
+            outcomes = [
+                "Implement supervised learning algorithms on real-world datasets",
+                "Evaluate model performance using appropriate metrics",
+                "Deploy trained models for inference"
+            ]
+        elif 'Python' in title or 'Python' in gap:
+            outcomes = [
+                "Write Python scripts for data manipulation and analysis",
+                "Use Python libraries (pandas, numpy) for industry applications",
+                "Debug and optimise Python code for performance"
+            ]
+        elif 'Artificial Intelligence' in title or 'AI' in gap:
+            outcomes = [
+                "Understand core AI concepts and search algorithms",
+                "Implement knowledge representation and reasoning systems",
+                "Apply AI techniques to solve practical problems"
+            ]
+        elif 'Go' in title or 'Go' in gap:
+            outcomes = [
+                "Write concurrent Go programs using goroutines and channels",
+                "Build REST APIs using Go standard library and frameworks",
+                "Implement error handling and testing in Go applications"
+            ]
+        elif 'Docker' in title:
+            outcomes = [
+                "Create and manage Docker containers and images",
+                "Write Dockerfiles for application containerisation",
+                "Orchestrate multi-container applications using Docker Compose"
+            ]
+        else:
+            outcomes = [
+                f"Apply {gap} concepts to practical industry scenarios",
+                "Demonstrate proficiency in the target competency area",
+                "Complete a capstone project demonstrating mastery"
+            ]
+    
+    # Assessment strategy
+    assessment = course.get('assessment', '')
+    if not assessment:
+        assessment = "Formative: Practical exercises and quizzes (40%); Summative: Capstone project (60%)"
+    
+    # Priority badge background
+    pri_bg = {'High': C['navy'], 'Medium': C['slate'], 'Low': C['steel']}.get(str(pri), C['slate'])
 
-        _s = lambda name, **kw: ParagraphStyle(name, **kw)
-        title_p = Paragraph(f"<b>{title}</b>",
-            _s('cT', fontName='Helvetica-Bold', fontSize=9.5, textColor=C['navy'], leading=13))
-        gap_p   = Paragraph(f"Skill Gap: <i>{gap}</i>",
-            _s('cG', fontName='Helvetica', fontSize=8.5, textColor=C['steel'], leading=12))
-        meta_p  = Paragraph(f"Duration: <b>{dur} wks</b>  ·  Level: <b>{lvl}</b>",
-            _s('cM', fontName='Helvetica', fontSize=8, textColor=C['slate'], leading=11))
-        pri_p   = Paragraph(f"<b>{pri}</b>",
-            _s('cP', fontName='Helvetica-Bold', fontSize=7.5,
-               textColor=C['white'], alignment=TA_CENTER, leading=10))
-        idx_p   = Paragraph(f"<b>0{idx}</b>",
-            _s('cI', fontName='Helvetica-Bold', fontSize=14, textColor=C['gold'], leading=18))
+    _s = lambda name, **kw: ParagraphStyle(name, **kw)
+    
+    # Header with title and priority
+    title_p = Paragraph(f"<b>{idx}. {title}</b>",
+        _s('cT', fontName='Helvetica-Bold', fontSize=11, textColor=C['navy'], leading=14))
+    
+    # Basic info line
+    meta_p = Paragraph(f"<b>Duration:</b> {dur} weeks  |  <b>Level:</b> {lvl}  |  <b>Skill Gap:</b> {gap}",
+        _s('cM', fontName='Helvetica', fontSize=8.5, textColor=C['slate'], leading=11))
+    
+    # Prerequisites
+    prereq_text = ', '.join(prereqs) if isinstance(prereqs, list) else prereqs
+    prereq_p = Paragraph(f"<b>Prerequisites:</b> {prereq_text}",
+        _s('cR', fontName='Helvetica', fontSize=8.5, textColor=C['slate'], leading=11))
+    
+    # Learning outcomes (as bullet points)
+    outcomes_lines = [f"• {o}" for o in outcomes[:4]]
+    outcomes_text = "<b>Learning Outcomes:</b><br/>" + "<br/>".join(outcomes_lines)
+    outcomes_p = Paragraph(outcomes_text,
+        _s('cO', fontName='Helvetica', fontSize=8.5, textColor=C['slate'], leading=12))
+    
+    # Modules (as inline list)
+    modules_text = "<b>Core Modules:</b> " + " → ".join(modules[:4])
+    modules_p = Paragraph(modules_text,
+        _s('cMod', fontName='Helvetica', fontSize=8.5, textColor=C['slate'], leading=11))
+    
+    # Assessment strategy
+    assessment_p = Paragraph(f"<b>Assessment:</b> {assessment}",
+        _s('cAs', fontName='Helvetica', fontSize=8.5, textColor=C['slate'], leading=11))
+    
+    # Priority pill
+    pri_p = Paragraph(f"<b>{pri}</b>",
+        _s('cP', fontName='Helvetica-Bold', fontSize=8,
+           textColor=C['white'], alignment=TA_CENTER, leading=10))
+    pri_tbl = Table([[pri_p]], colWidths=[2.0 * cm])
+    pri_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), pri_bg),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+    ]))
 
-        pri_tbl = Table([[pri_p]], colWidths=[1.5 * cm])
-        pri_tbl.setStyle(TableStyle([
-            ('BACKGROUND',    (0, 0), (-1, -1), pri_bg),
-            ('TOPPADDING',    (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ('LEFTPADDING',   (0, 0), (-1, -1), 6),
-            ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
-        ]))
+    # Build the card
+    content = Table([
+        [title_p, pri_tbl],
+        [meta_p, ''],
+        [prereq_p, ''],
+        [outcomes_p, ''],
+        [modules_p, ''],
+        [assessment_p, ''],
+    ], colWidths=[CONTENT_W - 2.5 * cm, 2.5 * cm])
+    
+    content.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
 
-        inner = Table(
-            [[idx_p, [title_p, Spacer(1, 2), gap_p, Spacer(1, 2), meta_p], pri_tbl]],
-            colWidths=[1.2 * cm, CONTENT_W - 3.4 * cm, 2.0 * cm],
-        )
-        inner.setStyle(TableStyle([
-            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN',         (2, 0), (2, 0),   'RIGHT'),
-            ('LEFTPADDING',   (0, 0), (-1, -1), 6),
-            ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
-            ('TOPPADDING',    (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ]))
-
-        card = Table([[inner]], colWidths=[CONTENT_W])
-        card.setStyle(TableStyle([
-            ('BOX',           (0, 0), (-1, -1), 0.5, C['rule']),
-            ('BACKGROUND',    (0, 0), (-1, -1), C['bg_card']),
-            ('LINEAFTER',     (0, 0), (0, -1),  2.5, C['gold']),
-            ('LEFTPADDING',   (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
-            ('TOPPADDING',    (0, 0), (-1, -1), 0),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-        ]))
-        return card
+    card = Table([[content]], colWidths=[CONTENT_W])
+    card.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.5, C['rule']),
+        ('BACKGROUND', (0, 0), (-1, -1), C['bg_card']),
+        ('LINEAFTER', (0, 0), (0, -1), 2.5, C['gold']),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    
+    return card
 
     # ═════════════════════════════════════════════════════════════════════
     # HEADER / FOOTER (called by Platypus on every content page)
