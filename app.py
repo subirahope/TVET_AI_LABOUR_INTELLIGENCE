@@ -929,7 +929,7 @@ def generate_pdf_report():
         ]))
         return tbl
 
-    def course_card(course, idx):
+def course_card(course, idx):
     title = course.get('title', 'N/A')
     gap = course.get('skill_gap', 'N/A')
     dur = course.get('duration', '—')
