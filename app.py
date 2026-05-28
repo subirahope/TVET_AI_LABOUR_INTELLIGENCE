@@ -1498,6 +1498,9 @@ def render_skills_analysis():
 # ============================================================
 # COURSES PAGE
 # ============================================================
+# ============================================================
+# COURSES PAGE
+# ============================================================
 def render_courses():
     render_page_header("Course Recommendations", "AI-generated short courses to address skills gaps", "fas fa-book-open")
     st.markdown("---")
@@ -1512,7 +1515,9 @@ def render_courses():
     st.markdown(f"**{len(courses)} courses found**")
     st.markdown("---")
     for course in courses:
-        with st.expander(f"Book: {course.get('title','N/A')}"):
+        # Use gold book icon (same as dashboard) with HTML styling
+        with st.expander(f"<span style='color:var(--gold); font-size:1.1rem;'>📘</span> {course.get('title','N/A')}", 
+                         unsafe_allow_html=True):
             col1, col2 = st.columns([2,1])
             with col1:
                 st.markdown(f"**Skill Gap:** `{course.get('skill_gap','N/A')}`")
