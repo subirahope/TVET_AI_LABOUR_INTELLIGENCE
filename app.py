@@ -1498,9 +1498,6 @@ def render_skills_analysis():
 # ============================================================
 # COURSES PAGE
 # ============================================================
-# ============================================================
-# COURSES PAGE
-# ============================================================
 def render_courses():
     render_page_header("Course Recommendations", "AI-generated short courses to address skills gaps", "fas fa-book-open")
     st.markdown("---")
@@ -1515,8 +1512,8 @@ def render_courses():
     st.markdown(f"**{len(courses)} courses found**")
     st.markdown("---")
     for course in courses:
-        # Use gold book icon (same as dashboard) with HTML styling
-        with st.expander(f"<span style='color:var(--gold); font-size:1.1rem;'>📘</span> {course.get('title','N/A')}", 
+        # Use Font Awesome gold book icon (same as dashboard cards)
+        with st.expander(f"<i class='fas fa-book-open' style='color:var(--gold); margin-right:10px;'></i> {course.get('title','N/A')}", 
                          unsafe_allow_html=True):
             col1, col2 = st.columns([2,1])
             with col1:
@@ -1533,7 +1530,6 @@ def render_courses():
                 st.markdown(f"**Market Demand:** {course.get('market_demand',0)} mentions")
                 st.markdown(f"**Gap Score:** {course.get('gap_score',0):.2f}")
             st.markdown("**Modules:** " + " · ".join(course.get('modules',[])))
-
 # ============================================================
 # REPORTS PAGE
 # ============================================================
