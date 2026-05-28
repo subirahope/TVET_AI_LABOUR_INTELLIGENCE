@@ -1512,9 +1512,11 @@ def render_courses():
     st.markdown(f"**{len(courses)} courses found**")
     st.markdown("---")
     for course in courses:
-        # Use Font Awesome gold book icon (same as dashboard cards)
-        with st.expander(f"<i class='fas fa-book-open' style='color:var(--gold); margin-right:10px;'></i> {course.get('title','N/A')}", 
-                         unsafe_allow_html=True):
+        # Use plain text title (no HTML in expander)
+        with st.expander(f"{course.get('title', 'N/A')}"):
+            # Add gold book icon inside the expander content (not the title)
+            st.markdown(f'<i class="fas fa-book-open" style="color:var(--gold); margin-right:8px;"></i> <b>Course Details</b>', 
+                       unsafe_allow_html=True)
             col1, col2 = st.columns([2,1])
             with col1:
                 st.markdown(f"**Skill Gap:** `{course.get('skill_gap','N/A')}`")
