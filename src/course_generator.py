@@ -33,6 +33,34 @@ class CourseGenerator:
     def _init_templates(self) -> Dict:
         """Initialize course templates for common skills"""
         return {
+            'r': {
+                'title': 'R Programming for Data Analysis',
+                    'duration': 6,
+                    'level': 'Intermediate',
+                    'prerequisites': ['Basic programming knowledge', 'Understanding of statistics'],
+                    'learning_outcomes': [
+                        'Write R scripts for data analysis',
+                        'Use R libraries (tidyverse, dplyr, ggplot2)',
+                        'Create data visualisations',
+                        'Perform statistical analysis in R'
+                    ],
+                    'modules': [
+                        'Module 1: R Fundamentals (Week 1-2)',
+                        'Module 2: Data Manipulation with dplyr (Week 3-4)',
+                        'Module 3: Data Visualisation with ggplot2 (Week 5-6)'
+                    ],
+                    'assessment': [
+                        'Weekly coding exercises (25%)',
+                        'Data analysis project (35%)',
+                        'Final practical exam (40%)'
+                    ],
+                    'implementation': {
+                        'delivery_mode': 'Blended (online + practical sessions)',
+                        'instructor_requirement': 'R programmer with data science experience',
+                        'facility_requirement': 'Computer lab with R and RStudio installed',
+                        'estimated_cost': 'KES 25,000 - 35,000 per learner'
+                    }
+                },
             'python': {
                 'title': 'Python Programming for Industry Applications',
                 'duration': 8,
@@ -188,9 +216,19 @@ class CourseGenerator:
     def get_template(self, skill: str) -> Optional[Dict]:
         """Get course template for a specific skill"""
         skill_lower = skill.lower()
+
+        # Exact match first
+        if skill_lower in self.course_templates:
+            return self.course_templates[skill_lower]
+        
         for key, template in self.course_templates.items():
-            if key in skill_lower or skill_lower in key:
+            if skill_lower.startswith(key) or key.startswith(skill_lower):
                 return template
+
+        for key, template in self.course_templates.items():
+            if len(key) > 2 and key in skill_lower:  # Only for multi-character keys
+                return template
+        
         return None
     
     def generate_course(self, skill: str, priority_tier: str, market_freq: int, 
