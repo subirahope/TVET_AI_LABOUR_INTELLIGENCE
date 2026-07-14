@@ -622,7 +622,7 @@ with st.sidebar:
         st.info("No curriculum loaded")
 
 # ============================================================
-# DATA UPLOAD - REDESIGNED WITH VISIBLE TEXT
+# DATA UPLOAD 
 # ============================================================
 def render_data_upload():
     # Custom styled headers with icons
@@ -1634,7 +1634,6 @@ elif page == "Data Sources":
 # ============================================================
 st.markdown("""
 <div class="app-footer">
-  <i class="fas fa-brain"></i> TVET Skills Intel | AI-Powered Labour Market Intelligence for Kenyan TVET Institutions<br>
-  Data: LinkedIn · BrighterMonday · Fuzu · MyJobMag · IkoKazi | May 2026
+  <i class="fas fa-brain"></i> TVET Skills Intel | AI-Powered Labour Market Intelligence for Kenyan TVET Institutions | May 2026
 </div>
 """, unsafe_allow_html=True)
